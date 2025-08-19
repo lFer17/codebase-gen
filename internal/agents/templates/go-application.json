@@ -1,0 +1,9 @@
+{
+    "name": "go-default",
+    "description": "A Go application template with basic structure and main function.",
+    "language": "go",
+    "prompt": "Create a Go application with the following features:\n- Clean project structure following Go conventions\n- Configuration management\n- Proper error handling\n- Logging ",
+    "files":{
+        
+    }
+}
