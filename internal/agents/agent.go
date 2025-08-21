@@ -1,6 +1,7 @@
 package agents
 
 import (
+	"bytes"
 	"context"
 	"embed"
 	"encoding/json"
@@ -10,6 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"text/template"
 )
 
 // GO embed templates
@@ -300,7 +302,7 @@ func (a *Agent) loadPromptTemplates() {
 				var tmpl PromptTemplate
 
 				if err := json.Unmarshal(data, &tmpl); err != nil {
-					log.Printf("Warning: Invalid Prompt Template format in %s:%v", file.Name())
+					log.Printf("Warning: Invalid Prompt Template format in %s:%v", file.Name(), err)
 					continue
 				}
 
@@ -314,5 +316,103 @@ func (a *Agent) loadPromptTemplates() {
 		}
 
 	}
+
+}
+
+func (a *Agent) processTemplate(content string) (string, error) {
+	tmpl, err := template.New("content").Parse(content)
+
+	if err != nil {
+		return "", err
+	}
+
+	data := struct {
+		Package string
+	}{
+		Package: a.basePackage,
+	}
+
+	var buf bytes.Buffer
+
+	if err = tmpl.Execute(&buf, data); err != nil {
+		return "", err
+	}
+
+	return buf.String(), nil
+
+}
+
+func (a *Agent) GenerateCode(prompt string) error {
+	tmpl, ok := a.templates[a.selectedTmpl]
+
+	if !ok {
+		return fmt.Errorf("template %s not found", a.selectedTmpl)
+	}
+
+	if tmpl.Language != "" {
+		a.language = tmpl.Language
+	}
+
+	log.Printf("Generating code for instruction using template: %s (language:%s)", a.selectedTmpl, a.language)
+
+	for path, content := range tmpl.Files {
+
+		tmplContent, err := a.processTemplate(content)
+
+		if err != nil {
+			log.Printf("Warning: proccessing template %s:%v", path, err)
+			tmplContent = content
+		}
+
+		a.taskQueue <- fileTask{
+			Path:    path,
+			Content: tmplContent,
+		}
+		log.Printf("Added template file to queu: %s", path)
+	}
+
+	promptTemplate, ok := a.promptsTmpl[a.language]
+
+	if !ok {
+		log.Printf("No prompt template found %s, using default", a.language)
+
+		promptTemplate = a.promptsTmpl["default"]
+	}
+
+	promptData := struct {
+		BasePackage string
+		ExtraPrompt string
+	}{
+		BasePackage: a.basePackage,
+		ExtraPrompt: tmpl.Prompt,
+	}
+
+	var buf bytes.Buffer
+
+	t, err := template.New("prompt").Parse(promptTemplate.Template)
+
+	if err != nil {
+		return fmt.Errorf("error parsing prompt template:%w", err)
+	}
+
+	if err := t.Execute(&buf, promptData); err != nil {
+		return fmt.Errorf("error executing prompt template:%w", err)
+	}
+
+	formattedSystemPrompt := buf.String()
+
+	res, err := a.openAi.Query(formattedSystemPrompt, prompt)
+
+	if err != nil {
+		return fmt.Errorf("error queyring OpenAI:%w", err)
+	}
+
+	// handling openAI response
+
+	if err = a.ParserCode(res.Choices[0].Message.Content); err != nil {
+		return fmt.Errorf("error parsing code:%w", err)
+	}
+
+	return nil
 
 }
