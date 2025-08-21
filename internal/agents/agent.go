@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -191,7 +192,7 @@ func (a *Agent) loadTemplates() error {
 			continue
 		}
 
-		data, err := templatesFS.ReadFile(filepath.Join("templates", file.Name()))
+		data, err := templatesFS.ReadFile(path.Join("templates", file.Name()))
 		if err != nil {
 			log.Printf("Warning: Could not read template file %s: %v", file.Name(), err)
 			continue
