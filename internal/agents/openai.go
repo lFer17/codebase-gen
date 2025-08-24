@@ -13,7 +13,6 @@ import (
 
 const (
 	OpenApiEndpoint = "https://api.openai.com/v1/chat/completions"
-	ModelName       = "gpt-4o-mini"
 )
 
 type OpenAPIResponse struct {
@@ -31,12 +30,15 @@ type OpenAPI struct {
 	httpClient *http.Client
 	ctx        context.Context
 	apikey     string
+	model      string
 }
 
-func NewOpenAI(ctx context.Context, apiKey string, httpClient *http.Client) *OpenAPI {
+func NewOpenAI(ctx context.Context, apiKey string, model string, httpClient *http.Client) *OpenAPI {
 	o := &OpenAPI{
-		ctx:    ctx,
-		apikey: apiKey,
+		ctx:        ctx,
+		apikey:     apiKey,
+		model:      model,
+		httpClient: httpClient,
 	}
 
 	if httpClient == nil {
@@ -56,7 +58,7 @@ func (o *OpenAPI) Query(systemPrompt, prompt string) (OpenAPIResponse, error) {
 	}
 
 	bs, err := json.Marshal(map[string]interface{}{
-		"model": ModelName,
+		"model": o.model,
 		"messages": []map[string]string{
 			{
 				"role":    "system",

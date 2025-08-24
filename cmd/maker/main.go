@@ -5,7 +5,9 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -21,7 +23,8 @@ func main() {
 	workerCount := flag.Int("worker-count", 4, "Number of concurrent workers")
 	templateName := flag.String("template", "default", "Project to use")
 	language := flag.String("language", "go", "programming language for the project")
-
+	model := flag.String("model", "gpt-4o-mini", "OpenAI model to user")
+	timeout := flag.Int("timeout", 120, "Time for OpenAI Api Calls")
 	flag.Parse()
 
 	if *openApikey == "" {
@@ -35,7 +38,9 @@ func main() {
 
 	ctx := context.Background()
 
-	openAIClient := agents.NewOpenAI(ctx, *openApikey, nil)
+	openAIClient := agents.NewOpenAI(ctx, *openApikey, *model, &http.Client{
+		Timeout: time.Duration(*timeout) * time.Second,
+	})
 
 	agent, err := agents.NewAgent(ctx,
 		openAIClient,
@@ -50,9 +55,18 @@ func main() {
 
 	}
 
+	args := flag.Args()
+
+	if len(args) == 0 {
+		log.Printf("please pass arguments")
+		os.Exit(1)
+	}
+
 	agent.Start()
 
-	if err = agent.GenerateCode("Create a simple todo app using in-memory database"); err != nil {
+	prompt := strings.Join(args, " ")
+
+	if err = agent.GenerateCode(prompt); err != nil {
 		log.Printf("error writing code: %v\n", err)
 		agent.Stop()
 		os.Exit(1)
