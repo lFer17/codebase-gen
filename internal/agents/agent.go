@@ -417,3 +417,28 @@ func (a *Agent) GenerateCode(prompt string) error {
 	return nil
 
 }
+
+func (a *Agent) ListTemplates() []ProjectTemplate {
+	templates := make([]ProjectTemplate, 0, len(a.templates))
+
+	for _, tmpl := range a.templates {
+		templates = append(templates, tmpl)
+	}
+
+	return templates
+}
+
+func (a *Agent) Listlanguages() []string {
+	languages := make(map[string]bool)
+
+	for _, tmpl := range a.promptsTmpl {
+		languages[tmpl.Language] = true
+	}
+
+	result := make([]string, 0, len(languages))
+	for lang := range languages {
+		result = append(result, lang)
+	}
+
+	return result
+}

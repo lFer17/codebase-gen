@@ -25,6 +25,9 @@ func main() {
 	language := flag.String("language", "go", "programming language for the project")
 	model := flag.String("model", "gpt-4o-mini", "OpenAI model to user")
 	timeout := flag.Int("timeout", 120, "Time for OpenAI Api Calls")
+	listTemplates := flag.Bool("list-templates", false, "List available templates and exit")
+	listLanguages := flag.Bool("list-lenguages", false, "List supportes programming languages and exit")
+
 	flag.Parse()
 
 	if *openApikey == "" {
@@ -54,11 +57,27 @@ func main() {
 		log.Fatal(err)
 
 	}
+	// Template Listing
+
+	if *listTemplates {
+		fmt.Println("Available Templates:")
+		for _, tmpl := range agent.ListTemplates() {
+			fmt.Printf("- %s: %s (Languages: %s)\n", tmpl.Name, tmpl.Description, tmpl.Language)
+		}
+	}
+
+	// Language Listing
+	if *listLanguages {
+		fmt.Println("Available languages:")
+		for _, lang := range agent.Listlanguages() {
+			fmt.Printf("- %s\n", lang)
+		}
+	}
 
 	args := flag.Args()
 
 	if len(args) == 0 {
-		log.Printf("please pass arguments")
+		log.Println("please pass arguments")
 		os.Exit(1)
 	}
 
