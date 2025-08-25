@@ -40,25 +40,28 @@ type PromptTemplate struct {
 }
 
 type Agent struct {
-	openAi          *OpenAPI
-	outputDir       string
-	basePackage     string
-	taskQueue       chan fileTask
-	wg              sync.WaitGroup
-	workerCount     int
-	ctx             context.Context
-	cancel          context.CancelFunc
-	fileWriterMutex sync.Mutex
-	filesWritten    map[string]bool
-	selectedTmpl    string
-	language        string
-	templates       map[string]ProjectTemplate
-	promptsTmpl     map[string]PromptTemplate
+	openAi           *OpenAPI
+	outputDir        string
+	basePackage      string
+	taskQueue        chan fileTask
+	wg               sync.WaitGroup
+	workerCount      int
+	ctx              context.Context
+	cancel           context.CancelFunc
+	fileWriterMutex  sync.Mutex
+	filesWritten     map[string]bool
+	selectedTmpl     string
+	language         string
+	templates        map[string]ProjectTemplate
+	promptsTmpl      map[string]PromptTemplate
+	progressCallBack ProgressCallBack
 }
 
 var (
 	Languages = []string{"Go", "Python", "JavaScript", "java"}
 )
+
+type ProgressCallBack func(eventType, message, file string)
 
 func NewAgent(ctx context.Context,
 	openAI *OpenAPI,
@@ -90,6 +93,24 @@ func NewAgent(ctx context.Context,
 
 	return agent, nil
 }
+func NewAgentWithCallback(ctx context.Context,
+	openAI *OpenAPI,
+	outputDir string,
+	basePackage string,
+	templateName string,
+	language string,
+	workerCount int,
+	callBack ProgressCallBack) (*Agent, error) {
+	agent, err := NewAgent(ctx, openAI, outputDir, basePackage, templateName, language, workerCount)
+
+	if err != nil {
+		return nil, err
+	}
+
+	agent.progressCallBack = callBack
+
+	return agent, nil
+}
 
 func (a *Agent) Start() {
 	log.Printf("Starting %d workers...\n", a.workerCount)
@@ -109,6 +130,10 @@ func (a *Agent) worker(id int) {
 			if !ok {
 				log.Printf("Worker %d: Task channel closed, exiting\n", id)
 				return
+			}
+
+			if a.progressCallBack != nil {
+				a.progressCallBack("file", "writing file", task.Path)
 			}
 
 			a.fileWriterMutex.Lock()
@@ -363,6 +388,9 @@ func (a *Agent) GenerateCode(prompt string) error {
 		if err != nil {
 			log.Printf("Warning: proccessing template %s:%v", path, err)
 			tmplContent = content
+		}
+		if a.progressCallBack != nil {
+			a.progressCallBack("file", "Sending file queue", path)
 		}
 
 		a.taskQueue <- fileTask{
