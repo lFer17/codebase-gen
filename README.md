@@ -1,6 +1,10 @@
 # Codebase Maker
 
-Un generador de código inteligente que utiliza OpenAI para crear proyectos completos basados en descripciones en lenguaje natural. Soporta múltiples lenguajes de programación y frameworks populares. 🚨IMPORTANTE🚨  los prompts al momento de generar el codigo funcionan de forma inicial es en Inglés  
+Un generador de código inteligente que utiliza OpenAI para crear proyectos completos basados en descripciones en lenguaje natural. Soporta múltiples lenguajes de programación y frameworks populares. 🚨IMPORTANTE🚨  los prompts al momento de generar el codigo funcionan de forma inicial es en Inglés 
+
+## 🎥 Demo
+
+![WEB-Demo Code BaseGen](./web/static/assets/DemoGif.gif)
 
 ## 🚀 Características
 
