@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
 
@@ -74,7 +75,7 @@ func NewServer(openAIKey, outputBase string) *Server {
 	}
 }
 
-func (s *Server) handleGenerate(w http.ResponseWriter, r *http.Request) {
+func (s *Server) HandleGenerate(w http.ResponseWriter, r *http.Request) {
 	conn, err := s.upgrader.Upgrade(w, r, nil)
 
 	if err != nil {
@@ -209,6 +210,39 @@ func (s *Server) handleGenerate(w http.ResponseWriter, r *http.Request) {
 		Message: "Code generation completed!",
 		ZipURL:  zipURL,
 	})
+}
+
+func (s *Server) HandleDownload(w http.ResponseWriter, r *http.Request) {
+	sessionID := r.URL.Path[len("/download/"):]
+	sessionDir := filepath.Join(s.outputBase, sessionID)
+
+	files, err := os.ReadDir(sessionDir)
+
+	if err != nil {
+		http.Error(w, "Session not found", http.StatusNotFound)
+		return
+	}
+
+	var zipName string
+
+	for _, file := range files {
+		if !file.IsDir() && strings.HasSuffix(file.Name(), ".zip") {
+			zipName = file.Name()
+			break
+		}
+	}
+
+	if zipName == "" {
+		http.Error(w, "Zip file not found", http.StatusNotFound)
+		return
+	}
+
+	zipPath := filepath.Join(sessionDir, zipName)
+
+	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=%s", zipName))
+	w.Header().Set("Content-Type", "application/zip")
+	http.ServeFile(w, r, zipPath)
+
 }
 
 func sendEvent(client *WebSocketClient, event ProgressEvent) {
